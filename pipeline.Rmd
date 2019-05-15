@@ -3,28 +3,96 @@ title: "pipeline"
 author: "Elizabeth Madin"
 date: "14/05/2019"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## R Allometry Project
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+> How does plant height scale with weight?
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Hypotheses: 
+1) No replationship
+2) Linear
+3) To the second power
+4) To the third power
 
-```{r cars}
-summary(cars)
+## Load our data
+
+```{r}
+seeds <- read.csv("https://raw.githubusercontent.com/jmadin/himbr/master/data/seed_root_herbivores.csv", as.is=TRUE)
+head(seeds)
+summary(seeds)
+
+class(seeds["Height"])
+class(seeds[["Height"]])
+
 ```
 
-## Including Plots
+## A function for standard error
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+standard_error <- function(x) {
+  sd(x) / sqrt(length(x))
+  return(se)
+}
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Seed height/weight plotting
+
+```{r}
+plot(Weight ~ Height, data=seeds)
+
+```
+
+
+## Data transformation
+
+```{r}
+
+seeds$Height_log10 <- log10(seeds$Height)
+seeds$Weight_log10 <- log10(seeds$Weight)
+
+```
+
+## Data analysis
+
+We will run a linear regression on log transformed variables to look for scaling coefficients
+
+```{r}
+
+plot(Weight_log10 ~ Height_log10, data=seeds, xlab="Height,log10", col="grey")
+
+mod <- lm(Weight_log10 ~ Height_log10, seeds)
+summary(mod)
+mod$coef
+write.csv(mod$coef, "output/model_coefs.csv")
+
+```
+
+## Plotting
+
+```{r}
+
+#abline(mod)
+h <- sort(seeds$Height_log10)
+pred <- predict(mod, list(Height_log10=h), interval="confidence")
+
+pdf("figs/figure1.pdf")
+
+plot(Weight_log10 ~ Height_log10, data=seeds)
+lines(h, pred[,1], col="black", lty=2)
+
+polygon(c(h, rev(h)), c(pred[,2], rev(pred[,3])), col=rgb(0,0,1,0.2), border=NA)
+
+```
+
+## Conclusions
+
+The slope of the relationship between height and weight is `round(mod$coef[2], 2)`.
+
+
